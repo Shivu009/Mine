@@ -2,8 +2,7 @@
     "users": [
         {"userid": 1, "name": "John Doe", "country": "USA"},
         {"userid": 2, "name": "Jane Smith", "country": "UK"},
-        {"userid": 3, "name": "Smith", "country": "UK"}
-        
+        {"userid": 3, "name": "Jane Smith2", "country": "UK"}
     ],
     "interactions": [
         {
@@ -22,7 +21,7 @@
             "status": "inprogress",
             "type": "email",
             "customerid": 2
-           
+          
         },
         {
             "id": 3,
@@ -31,7 +30,7 @@
             "status": "done",
             "type": "teams",
             "customerid": 3
-           
+          
         },
         {
             "id": 4,
@@ -40,7 +39,6 @@
             "status": "done",
             "type": "email",
             "customerid": 4
-            
         },
         {
             "id": 5,
@@ -49,7 +47,6 @@
             "status": "inprogress",
             "type": "phone",
             "customerid": 5
-           
         },
         {
             "id": 6,
@@ -58,7 +55,6 @@
             "status": "done",
             "type": "teams",
             "customerid": 1
-           
         },
         {
             "id": 7,
@@ -67,16 +63,14 @@
             "status": "inprogress",
             "type": "email",
             "customerid": 2
-           
         },
         {
             "id": 8,
             "name": "Interaction 8",
-            "userid": 2,
+            "userid": 3,
             "status": "done",
             "type": "phone",
             "customerid": 3
-            
         },
         {
             "id": 9,
@@ -85,7 +79,7 @@
             "status": "inprogress",
             "type": "teams",
             "customerid": 4
-            
+          
         },
         {
             "id": 10,
@@ -94,7 +88,7 @@
             "status": "done",
             "type": "email",
             "customerid": 5
-            
+         
         }
     ],
     "customers": [
