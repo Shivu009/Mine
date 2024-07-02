@@ -1,13 +1,15 @@
 {
     "users": [
         {"userid": 1, "name": "John Doe", "country": "USA"},
-        {"userid": 2, "name": "Jane Smith", "country": "UK"}
+        {"userid": 2, "name": "Jane Smith", "country": "UK"},
+        {"userid": 3, "name": "Smith", "country": "UK"}
+        
     ],
     "interactions": [
         {
             "id": 1,
             "name": "Interaction 1",
-            "userid": 1,
+            "userid": 3,
             "status": "done",
             "type": "phone",
             "customerid": 1,
