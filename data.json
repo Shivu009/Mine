@@ -1,0 +1,115 @@
+{
+    "users": [
+        {"userid": 1, "name": "John Doe", "country": "USA"},
+        {"userid": 2, "name": "Jane Smith", "country": "UK"}
+    ],
+    "interactions": [
+        {
+            "id": 1,
+            "name": "Interaction 1",
+            "userid": 1,
+            "status": "done",
+            "type": "phone",
+            "customerid": 1,
+            "user": {"userid": 1, "name": "John Doe", "country": "USA"},
+            "customer": {"id": 1, "name": "Customer 1"}
+        },
+        {
+            "id": 2,
+            "name": "Interaction 2",
+            "userid": 2,
+            "status": "inprogress",
+            "type": "email",
+            "customerid": 2,
+            "user": {"userid": 2, "name": "Jane Smith", "country": "UK"},
+            "customer": {"id": 2, "name": "Customer 2"}
+        },
+        {
+            "id": 3,
+            "name": "Interaction 3",
+            "userid": 1,
+            "status": "done",
+            "type": "teams",
+            "customerid": 3,
+            "user": {"userid": 1, "name": "John Doe", "country": "USA"},
+            "customer": {"id": 3, "name": "Customer 3"}
+        },
+        {
+            "id": 4,
+            "name": "Interaction 4",
+            "userid": 2,
+            "status": "done",
+            "type": "email",
+            "customerid": 4,
+            "user": {"userid": 2, "name": "Jane Smith", "country": "UK"},
+            "customer": {"id": 4, "name": "Customer 4"}
+        },
+        {
+            "id": 5,
+            "name": "Interaction 5",
+            "userid": 1,
+            "status": "inprogress",
+            "type": "phone",
+            "customerid": 5,
+            "user": {"userid": 1, "name": "John Doe", "country": "USA"},
+            "customer": {"id": 5, "name": "Customer 5"}
+        },
+        {
+            "id": 6,
+            "name": "Interaction 6",
+            "userid": 2,
+            "status": "done",
+            "type": "teams",
+            "customerid": 1,
+            "user": {"userid": 2, "name": "Jane Smith", "country": "UK"},
+            "customer": {"id": 1, "name": "Customer 1"}
+        },
+        {
+            "id": 7,
+            "name": "Interaction 7",
+            "userid": 1,
+            "status": "inprogress",
+            "type": "email",
+            "customerid": 2,
+            "user": {"userid": 1, "name": "John Doe", "country": "USA"},
+            "customer": {"id": 2, "name": "Customer 2"}
+        },
+        {
+            "id": 8,
+            "name": "Interaction 8",
+            "userid": 2,
+            "status": "done",
+            "type": "phone",
+            "customerid": 3,
+            "user": {"userid": 2, "name": "Jane Smith", "country": "UK"},
+            "customer": {"id": 3, "name": "Customer 3"}
+        },
+        {
+            "id": 9,
+            "name": "Interaction 9",
+            "userid": 1,
+            "status": "inprogress",
+            "type": "teams",
+            "customerid": 4,
+            "user": {"userid": 1, "name": "John Doe", "country": "USA"},
+            "customer": {"id": 4, "name": "Customer 4"}
+        },
+        {
+            "id": 10,
+            "name": "Interaction 10",
+            "userid": 2,
+            "status": "done",
+            "type": "email",
+            "customerid": 5,
+            "user": {"userid": 2, "name": "Jane Smith", "country": "UK"},
+            "customer": {"id": 5, "name": "Customer 5"}
+        }
+    ],
+    "customers": [
+        {"id": 1, "name": "Customer 1"},
+        {"id": 2, "name": "Customer 2"},
+        {"id": 3, "name": "Customer 3"},
+        {"id": 4, "name": "Customer 4"},
+        {"id": 5, "name": "Customer 5"}
+    ]
+}
