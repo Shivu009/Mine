@@ -9,8 +9,8 @@
             "id": 1,
             "name": "Interaction 1",
             "userid": 3,
-            "status": "done",
-            "type": "phone",
+            "status": "newStatus",
+            "type": "NewType",
             "customerid": 1,
             "user": {"userid": 1, "name": "John Doe", "country": "USA"},
             "customer": {"id": 1, "name": "Customer 1"}
