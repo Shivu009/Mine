@@ -1,0 +1,21 @@
+[
+    { "contactType": "email" },
+    { "contactType": "phone" },
+    { "contactType": "in person" },
+    { "contactType": "remote" },
+    { "contactType": "fax" },
+    { "contactType": "telephone" },
+    { "contactType": "email" },
+    { "contactType": "phone" },
+    { "contactType": "fax" },
+    { "contactType": "remote" },
+    { "contactType": "in person" },
+    { "contactType": "email" },
+    { "contactType": "phone" },
+    { "contactType": "telephone" },
+    { "contactType": "remote" },
+    { "contactType": "in person" },
+    { "contactType": "fax" },
+    { "contactType": "phone" },
+    { "contactType": "remote" }
+]
