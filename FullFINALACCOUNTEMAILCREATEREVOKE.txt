@@ -1,0 +1,267 @@
+public class AccountEmailAlertService {
+
+    //CONSTANTS: .
+    // The field on Alert_vod__c used for linking the AccountId and Invalid email.
+    // 
+    private static final String ALERT_LINK_FIELD = 'VDH_Material_Alert__c'; 
+   
+    // 
+    private static final Date YESTERDAY = Date.today().addDays(-1);
+    private static final String ACTIVE_CONSENT_STATUS = 'Active'; 
+    private static final String EXPIRED_CONSENT_STATUS = 'Expired'; 
+    //
+    //Variables to control Alert Creation and alert expiration 
+    public enum ContextType {
+        ALERT_CREATION,
+        ALERT_DISMISSAL
+    }
+
+    // Define the list of email fields 
+    private static final List<Schema.SObjectField> EMAIL_FIELDS = new List<Schema.SObjectField>{
+        Account.PersonEmail,
+        Account.Email_2_TPI__c,
+        Account.Email_3_TPI__c,
+        Account.Email_4_TPI__c,
+        Account.Email_5_TPI__c
+    };
+
+    // Helper class
+    private class EmailContext {
+        public Set<Id> accountIds = new Set<Id>();
+        public Set<String> emails = new Set<String>();
+    }
+
+    //Key Generation - Reusable Method to generate   'AccountId_email@address.com' format. 
+ 
+    private static String generateAlertKey(Id accountId, String email) {
+        if (accountId == null || String.isBlank(email)) {
+            return null;
+        }
+        // Ensures consistent formatting (trim, lowercase) for accurate matching.
+        return accountId + '_' + email.toLowerCase().trim();
+    }
+
+    
+
+   
+    // Helper Methods for Data Gathering (Used by both creation and dismissal)
+    
+    private static Set<String> getAccountCurrentEmails(Account acc) {
+        Set<String> currentEmails = new Set<String>();
+        for (Schema.SObjectField fieldToken : EMAIL_FIELDS) {
+            String email = (String) acc.get(fieldToken.getDescribe().getName());
+            if (email != null && email.trim() != '') {
+                currentEmails.add(email.toLowerCase().trim());
+            }
+        }
+      
+        return currentEmails;
+    }
+
+   
+
+    /**
+    common Method for Data Collection for Alert dismissal and alert creation /
+        Function call Inside Both createTerritoryAlerts and dismissReactivatedEmailAlerts
+     */
+    private static EmailContext getEmailContextByCondition(List<Account> newAccounts, Map<Id, Account> oldAccountMap, ContextType type) {
+        EmailContext context = new EmailContext();
+        
+        for (Account newAcc : newAccounts) {
+            Account oldAcc = oldAccountMap.get(newAcc.Id);
+            if (oldAcc == null) continue;
+
+            context.accountIds.add(newAcc.Id);
+
+            for (Schema.SObjectField fieldToken : EMAIL_FIELDS) {
+                String fieldName = fieldToken.getDescribe().getName();
+                String newEmail = (String) newAcc.get(fieldName);  
+                String oldEmail = (String) oldAcc.get(fieldName);  
+
+                if (type == ContextType.ALERT_CREATION) {
+                    // Find OLD email that was removed/changed (for alert creation)
+                    if (newEmail != oldEmail && oldEmail != null && oldEmail.trim() != '') {
+                        context.emails.add(oldEmail.toLowerCase().trim());
+                    }
+                } else if (type == ContextType.ALERT_DISMISSAL) {
+                    // Find NEW email that was added/changed (for alert dismissal)
+                    if (newEmail != null && newEmail.trim() != '' && newEmail != oldEmail) {
+                        context.emails.add(newEmail.toLowerCase().trim());
+                    }
+                }
+            }
+        }
+        return context;
+    }
+
+   
+    // createTerritoryAlerts (Alert Creation Logic)/ Function Call From Trigger (TPI_Email_update_on_Account)
+
+    public static void createTerritoryAlerts(List<Account> accountsWithChange, Map<Id, Account> oldAccountMap) {
+        
+        Datetime activationDateTime = Datetime.newInstance(System.today().addDays(-1), Time.newInstance(0, 0, 0, 0)); 
+        Date expirationDate = System.today().addDays(10); 
+        List<Alert_vod__c> alertsforcreation = new List<Alert_vod__c>();
+        
+       
+       EmailContext context = getEmailContextByCondition(accountsWithChange, oldAccountMap, ContextType.ALERT_CREATION);
+        Set<String> previousEmails = context.emails;
+        Set<Id> accountIds = context.accountIds;
+
+        if (previousEmails.isEmpty()) return;
+        
+        // --- 2. Bulk Data Retrieval (Consents, Territories, Users) ---
+        // Profile ID 
+        Id kamProfileId;
+        try {
+            kamProfileId = [SELECT Id FROM Profile WHERE Name = 'TPI KAM Specialist' LIMIT 1].Id;
+        } catch (QueryException e) {
+            System.debug(LoggingLevel.ERROR, 'TPI KAM Specialist profile not found. Alerts cannot be targeted.');
+            return; 
+        }
+
+        // Active Opt-In Consents check
+        Map<Id, Map<String, Multichannel_Consent_vod__c>> accountConsentMap = new Map<Id, Map<String, Multichannel_Consent_vod__c>>();
+        for (Multichannel_Consent_vod__c consent : [
+            SELECT Account_vod__c, Channel_Value_vod__c  
+            FROM Multichannel_Consent_vod__c
+            WHERE Account_vod__c IN :accountIds 
+            AND Channel_Value_vod__c IN :previousEmails
+            AND Opt_Type_vod__c = 'Opt_In_vod'
+            AND Active_Consent_TPI__c = :ACTIVE_CONSENT_STATUS // Check for Active Consent
+            AND RecordType.DeveloperName = 'Approved_Email_vod'
+        ]) {
+            if (!accountConsentMap.containsKey(consent.Account_vod__c)) {
+                accountConsentMap.put(consent.Account_vod__c, new Map<String, Multichannel_Consent_vod__c>());
+            }
+            accountConsentMap.get(consent.Account_vod__c).put(consent.Channel_Value_vod__c.toLowerCase().trim(), consent);
+        }
+
+        if (accountConsentMap.isEmpty()) return;
+        
+        // Territory and User lookups
+        Map<Id, List<Id>> accIdToTerritoryIds = new Map<Id, List<Id>>();
+        Set<Id> territoryIds = new Set<Id>();
+        for (ObjectTerritory2Association objTerr : [SELECT Territory2Id, ObjectId FROM ObjectTerritory2Association WHERE ObjectId IN :accountIds AND SObjectType = 'Account']) {
+             if (!accIdToTerritoryIds.containsKey(objTerr.ObjectId)) accIdToTerritoryIds.put(objTerr.ObjectId, new List<Id>());
+             accIdToTerritoryIds.get(objTerr.ObjectId).add(objTerr.Territory2Id);
+             territoryIds.add(objTerr.Territory2Id);
+        }
+        
+        Map<Id, List<Id>> territoryUserMap = new Map<Id, List<Id>>();
+        if (territoryIds.isEmpty() || kamProfileId == null) return;
+        for (UserTerritory2Association userTerr : [SELECT Territory2Id, UserId FROM UserTerritory2Association WHERE Territory2Id IN :territoryIds AND User.ProfileId = :kamProfileId]) {
+             if (!territoryUserMap.containsKey(userTerr.Territory2Id)) territoryUserMap.put(userTerr.Territory2Id, new List<Id>());
+             territoryUserMap.get(userTerr.Territory2Id).add(userTerr.UserId);
+        }
+        
+        // --- 3. Alert Generation 
+        for (Account newAcc : accountsWithChange) {
+            Account oldAcc = oldAccountMap.get(newAcc.Id);
+            
+            List<Id> accountTerritoryIds = accIdToTerritoryIds.get(newAcc.Id);
+            Map<String, Multichannel_Consent_vod__c> currentAccConsents = accountConsentMap.get(newAcc.Id);
+            if (accountTerritoryIds == null || currentAccConsents == null) continue;
+            
+            Set<String> allCurrentEmails = getAccountCurrentEmails(newAcc);
+
+            for (Schema.SObjectField fieldToken : EMAIL_FIELDS) {
+                String oldEmail = (String) oldAcc.get(fieldToken.getDescribe().getName());
+                String normalizedOldEmail = (oldEmail != null) ? oldEmail.toLowerCase().trim() : null;
+
+                // Check 1: Was email removed/changed AND Check 2: Does it have active consent
+                if (normalizedOldEmail != null && currentAccConsents.containsKey(normalizedOldEmail)) {
+                    
+                    // Check 3: Ensure the email is not simply moved to another field 
+                    if (allCurrentEmails.contains(normalizedOldEmail)) {
+                        continue;
+                    }
+                    
+                    // ---Method to generate the key (Account_invalidEmail)
+                    String alertLinkKey = generateAlertKey(newAcc.Id, normalizedOldEmail);
+                    if (alertLinkKey == null) continue;
+                    
+                    String alertMessage = System.Label.EmailStatusAlertMessage + ' ' + oldEmail;
+                    String accRef = newAcc.Id + ',Account';
+                    
+                    for (Id territoryId : accountTerritoryIds) {
+                        List<Id> kamUserIds = territoryUserMap.get(territoryId);
+                        if (kamUserIds == null) continue;
+
+                        for (Id userId : kamUserIds) {
+                            Alert_vod__c newAlert = new Alert_vod__c(
+                                OwnerId = userId, 
+                                Country_TPI__c = newAcc.Country_TPI__c,
+                                Activation_Date_vod__c = activationDateTime,
+                                Expiration_Date_vod__c = expirationDate,
+                                Alert_Text_vod__c = alertMessage, 
+                                Name = System.Label.OfflineAlertName, 
+                                Priority_vod__c = 'Important',
+                                Dismissible_vod__c = TRUE,
+                                Link_Reference_vod__c = accRef,
+                                VDH_Material_Alert__c = alertLinkKey, //
+                                CreatedById='00524000002EgX6AAK'
+                            );
+                            alertsforcreation.add(newAlert);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // --- 4. Final DML ---
+        if (!alertsforcreation.isEmpty()) {
+            // Using allOrNone=false for trigger-context DML to allow partial success
+            Database.insert((List<SObject>)alertsforcreation, false);
+        }
+    }
+
+
+   
+    // ️ dismissReactivatedEmailAlerts - Function Call From Trigger (TPI_Email_update_on_Account)
+
+    public static void dismissReactivatedEmailAlerts(List<Account> newAccounts, Map<Id, Account> oldAccountMap) {
+        
+        // --- 1. Identify Reactivated Emails and Generate Keys ---
+     
+        EmailContext context = getEmailContextByCondition(newAccounts, oldAccountMap, ContextType.ALERT_DISMISSAL);
+        Set<String> reactivatedEmails = context.emails;
+        Set<Id> changedAccountIds = context.accountIds;
+      
+        if (reactivatedEmails.isEmpty()) return;
+
+        Set<String> alertRevocationKeys = new Set<String>();
+        
+        // Generate the precise keys using the reusable method
+        for (Id accId : changedAccountIds) {
+            for (String email : reactivatedEmails) {
+                // Reusing the key generation logic 
+                alertRevocationKeys.add(generateAlertKey(accId, email)); //preparing Reappeared Data In format Account_email
+            }//                                                           to perform an In query
+        }
+       
+        alertRevocationKeys.remove(null);
+        if (alertRevocationKeys.isEmpty()) return;
+        
+        // --- 2. Query ALL Matching Alerts
+        // Uses the generated keys to find  alerts to find alert to dismiss 
+        List<Alert_vod__c> alertsToDismiss = Database.query(
+             'SELECT Id, Expiration_Date_vod__c ' +
+             'FROM Alert_vod__c ' +
+             'WHERE ' + ALERT_LINK_FIELD + ' IN :alertRevocationKeys ' +///////identification of alerts for revoking
+             'AND Expiration_Date_vod__c >= :YESTERDAY' // Get Only Alerts which are not dismissed
+        );
+
+        // --- 3. Final Dismissal DML ---
+        if (!alertsToDismiss.isEmpty()) {
+            for (Alert_vod__c alert : alertsToDismiss) {
+                // Dismiss alert instantly by setting the Expiration Date to yesterday
+                alert.Expiration_Date_vod__c = YESTERDAY;
+            }
+            
+            
+            //update statement OUTSIDE for loop
+            Database.update(alertsToDismiss, false); 
+        }
+    }
+}
